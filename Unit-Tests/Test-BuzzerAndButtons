@@ -1,0 +1,56 @@
+// --- Pins ---
+#define BTN_UP     32
+#define BTN_DOWN   33
+#define BTN_LEFT   25
+#define BTN_RIGHT  26
+
+#define BUZZER_PIN 15
+
+// --- Setup ---
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(BTN_UP, INPUT);
+  pinMode(BTN_DOWN, INPUT);
+  pinMode(BTN_LEFT, INPUT);
+  pinMode(BTN_RIGHT, INPUT);
+
+  pinMode(BUZZER_PIN, OUTPUT);
+
+  Serial.println("Test boutons + buzzer prêt.");
+}
+
+// --- Fonction beep ---
+void beep(int freq) {
+  tone(BUZZER_PIN, freq, 120);  // 120 ms
+}
+
+// --- Loop ---
+void loop() {
+
+  if (digitalRead(BTN_UP) == HIGH) {
+    Serial.println("UP");
+    beep(1000);
+    delay(200);
+  }
+
+  if (digitalRead(BTN_DOWN) == HIGH) {
+    Serial.println("DOWN");
+    beep(600);
+    delay(200);
+  }
+
+  if (digitalRead(BTN_LEFT) == HIGH) {
+    Serial.println("LEFT");
+    beep(800);
+    delay(200);
+  }
+
+  if (digitalRead(BTN_RIGHT) == HIGH) {
+    Serial.println("RIGHT");
+    beep(1200);
+    delay(200);
+  }
+}
+
+
