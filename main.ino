@@ -10,6 +10,11 @@
 
 TFT_eSPI tft = TFT_eSPI();
 
+uint16_t couleurFond    = tft.color565(200, 255, 240);
+uint16_t couleurBandeau = tft.color565(210, 100, 100);
+uint16_t couleurBouton  = tft.color565(130, 190, 205);
+uint16_t couleurHover   = tft.color565(255, 255, 255);
+
 void setup() {
     pinMode(BTN_UP, INPUT);
     pinMode(BTN_DOWN, INPUT);
@@ -22,7 +27,7 @@ void setup() {
 
     tft.init();
     tft.setRotation(1);
-    tft.fillScreen(TFT_BLACK);
+    tft.fillScreen(couleurFond);
 }
 
 void loop() {}
