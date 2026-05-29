@@ -10,7 +10,6 @@
 TFT_eSPI tft = TFT_eSPI();
 
 uint16_t couleurFond    = tft.color565(200, 255, 240);
-uint16_t couleurBandeau = tft.color565(210, 100, 100);
 uint16_t couleurBouton  = tft.color565(130, 190, 205);
 uint16_t couleurHover   = tft.color565(255, 255, 255);
 
@@ -45,4 +44,20 @@ void setup() {
     dessinerMenu();
 }
 
-void loop() {}
+void loop() {
+    if (digitalRead(BTN_UP) == HIGH) {
+        indexSelection--;
+        if (indexSelection < 0) indexSelection = totalOptions - 1;
+        tone(BUZZER_PIN, 800, 50);
+        dessinerMenu();
+        delay(200);
+    }
+
+    if (digitalRead(BTN_DOWN) == HIGH) {
+        indexSelection++;
+        if (indexSelection >= totalOptions) indexSelection = 0;
+        tone(BUZZER_PIN, 800, 50);
+        dessinerMenu();
+        delay(200);
+    }
+}
