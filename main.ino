@@ -25,7 +25,41 @@ const int totalOptions = 3;
 enum Scene { MENU, GAME, OPTIONS, CREDITS };
 Scene currentScene = MENU;
 
-// --- Fonctions d'affichage ---
+// --- Maze ---
+const int mazeWidth = 160;
+const int mazeHeight = 120;
+
+int maze[mazeHeight][mazeWidth];
+
+int playerX = 10;
+int playerY = 10;
+
+// --- Fonctions ---
+void generateMaze() {
+    for (int y = 0; y < mazeHeight; y++) {
+        for (int x = 0; x < mazeWidth; x++) {
+            maze[y][x] = (x % 20 == 0) ? 1 : 0;
+        }
+    }
+}
+
+bool isWall(int x, int y) {
+    if (x < 0 || y < 0 || x >= mazeWidth || y >= mazeHeight) return true;
+    return maze[y][x] == 1;
+}
+
+void drawMaze() {
+    tft.fillScreen(TFT_BLACK);
+    for (int y = 0; y < mazeHeight; y++) {
+        for (int x = 0; x < mazeWidth; x++) {
+            if (maze[y][x] == 1) {
+                tft.drawPixel(x, y, TFT_WHITE);
+            }
+        }
+    }
+    tft.fillCircle(playerX, playerY, 3, TFT_RED);
+}
+
 void dessinerMenu() {
     tft.fillScreen(couleurFond);
     tft.setTextSize(2);
@@ -38,24 +72,6 @@ void dessinerMenu() {
         tft.setCursor(60, 70 + i*50);
         tft.print(options[i]);
     }
-}
-
-void dessinerOptions() {
-    tft.fillScreen(couleurFond);
-    tft.setTextSize(2);
-    tft.drawString("OPTIONS", 100, 40);
-}
-
-void dessinerCredits() {
-    tft.fillScreen(couleurFond);
-    tft.setTextSize(2);
-    tft.drawString("CREDITS", 100, 40);
-}
-
-void dessinerGame() {
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextSize(2);
-    tft.drawString("GAME START", 80, 100);
 }
 
 // --- Setup ---
@@ -72,6 +88,8 @@ void setup() {
 
     tft.init();
     tft.setRotation(1);
+
+    generateMaze();
     dessinerMenu();
 }
 
@@ -82,35 +100,37 @@ void loop() {
             if (digitalRead(BTN_UP) == HIGH) {
                 indexSelection--;
                 if (indexSelection < 0) indexSelection = totalOptions - 1;
-                tone(BUZZER_PIN, 800, 50);
                 dessinerMenu();
                 delay(200);
             }
             if (digitalRead(BTN_DOWN) == HIGH) {
                 indexSelection++;
                 if (indexSelection >= totalOptions) indexSelection = 0;
-                tone(BUZZER_PIN, 800, 50);
                 dessinerMenu();
                 delay(200);
             }
             if (digitalRead(BTN_SELECT) == HIGH) {
                 if (indexSelection == 0) currentScene = GAME;
-                if (indexSelection == 1) currentScene = OPTIONS;
-                if (indexSelection == 2) currentScene = CREDITS;
                 delay(200);
             }
             break;
 
         case GAME:
-            dessinerGame();
-            break;
+            int nextX = playerX;
+            int nextY = playerY;
 
-        case OPTIONS:
-            dessinerOptions();
-            break;
+            if (digitalRead(BTN_UP) == HIGH) nextY--;
+            if (digitalRead(BTN_DOWN) == HIGH) nextY++;
+            if (digitalRead(BTN_LEFT) == HIGH) nextX--;
+            if (digitalRead(BTN_RIGHT) == HIGH) nextX++;
 
-        case CREDITS:
-            dessinerCredits();
+            if (!isWall(nextX, nextY)) {
+                playerX = nextX;
+                playerY = nextY;
+            }
+
+            drawMaze();
+            delay(20);
             break;
     }
 }
