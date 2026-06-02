@@ -15,8 +15,10 @@ TFT_eSPI tft = TFT_eSPI();
 #define COLOR_WHITE     0xFFFF 
 #define COLOR_BLUE_TEXT 0x229F 
 #define COLOR_CHAR_BG   0x112B 
-#define COLOR_MAZE_BG   0x01A6 
+#define COLOR_MAZE_BROWN 0x38A1 // Fond du Niveau 1
+#define COLOR_MAZE_BLUE 0x01A6  // Fond des Niveaux 2 & 3 / Bleu sélection
 #define COLOR_START     0x07E0 
+#define COLOR_ENEMY_GREEN 0x03E0 // Vert foncé pour l'ennemi
 
 // Couleurs des personnages
 #define COLOR_CUBE_RED    0xF800 
@@ -41,15 +43,32 @@ enum Scene {
 
 Scene currentScene = MAIN_MENU;
 int selection = 0;           
-int gameOverSelection = 0; // 0 = RESTART, 1 = RETURN
-int victorySelection = 0;  // 0 = CONTINUE, 1 = RETURN
+int gameOverSelection = 0; 
+int victorySelection = 0;  
 int selectedLevel = 1;   
 int selectedCharacter = 0; 
 
-int playerX = 14;          
-int playerY = 10;          
+// ==========================================
+// CONFIGURATION DU JOUEUR & ENNEMI
+// ==========================================
+int playerX = 15;          
+int playerY = 15;          
 const int playerSize = 12; 
 int playerLives = 3;       
+
+// Variables de l'ennemi (Niveau 3)
+int enemyX = 145; 
+int enemyY = 105;
+int enemyDirX = 0; 
+int enemyDirY = 0; 
+const int enemySize = 12;
+unsigned long lastEnemyMove = 0;
+
+// Extension maximale à droite (292) juste avant le mur vertical à 295
+int enemyWaypointsX[] = {145, 145, 292, 112, 112, 145};
+int enemyWaypointsY[] = {105, 168, 168, 168, 48,  48};
+const int NUM_WAYPOINTS = sizeof(enemyWaypointsX) / sizeof(enemyWaypointsX[0]);
+int currentWaypoint = 0;
 
 bool soundOn = true;
 int brightness = 50; 
@@ -58,50 +77,78 @@ struct Wall {
   int x, y, w, h;
 };
 
-Wall walls[] = {
-  // --- BLOC EN HAUT À GAUCHE (START ZONE) ---
+// ==========================================
+// LABYRINTHE NIVEAU 1 (Style Pac-Man)
+// ==========================================
+Wall wallsLevel1[] = {
+  {45,  5,   6,   50},  
+  {45,  55,  50,  6},   
+  {135, 5,   6,   55},  
+  {135, 55,  55,  6},  
+  {230, 5,   6,   55},  
+  {230, 55,  45,  6},  
+  {45,  95,  96,  6},   
+  {90,  95,  6,   50},  
+  {180, 95,  6,   50},  
+  {180, 95,  95,  6},  
+  {45,  145, 6,   50},  
+  {45,  145, 45,  6},   
+  {135, 110, 6,   50},  
+  {135, 145, 45,  6},  
+  {90,  190, 96,  6},   
+  {230, 145, 6,   55},  
+  {230, 145, 45,  6},   
+  {275, 95,  6,   55},  
+  {5,   190, 45,  6}    
+};
+const int NUM_WALLS_L1 = sizeof(wallsLevel1) / sizeof(wallsLevel1[0]);
+
+// ==========================================
+// LABYRINTHE NIVEAUX 2 & 3 (Technique)
+// ==========================================
+Wall wallsLevel2And3[] = {
   {32,  35,  3,  25},  
   {32,  35,  32, 3},   
   {64,  35,  3,  85},  
   {5,   85,  59, 3},   
-
-  // --- ZONE INFÉRIEURE GAUCHE ---
   {36,  120, 3,  85},  
   {36,  165, 59, 3},   
   {68,  200, 3,  35},  
-
-  // --- CENTRE GAUCHE ---
   {95,  35,  3,  140}, 
   {135, 5,   3,  35},  
   {135, 65,  3,  115}, 
-
-  // --- ZONE HAUTE CENTRE ET DROITE ---
   {135, 35,  45, 3},   
   {180, 35,  3,  30},  
   {95,  65,  40, 3},   
   {135, 90,  85, 3},   
   {220, 38,  3,  52},  
   {220, 38,  72, 3},   
-
-  // --- LABYRINHE INFÉRIEUR & DROIT ---
   {185, 120, 80, 3},   
   {185, 120, 3,  40},  
   {233, 120, 3,  45},  
   {233, 162, 62, 3},   
   {295, 110, 3,  55},  
   {265, 78,  50, 3},   
-  
   {68,  190, 222, 3}   
 };
+const int NUM_WALLS_L23 = sizeof(wallsLevel2And3) / sizeof(wallsLevel2And3[0]);
 
-const int NUM_WALLS = sizeof(walls) / sizeof(walls[0]);
-
+// ==========================================
+// PROTOTYPES DES FONCTIONS
+// ==========================================
 void drawCurrentScene();
 void executeSelection();
 void waitForRelease(int pin);
 bool checkLongPress(int pin);
+void drawLevelMaze();
+bool checkWallCollision(int nx, int ny, int size);
+void resetPlayerPosition();
+void playDyingSound();
+void updateEnemyAI();
 
-
+// ==========================================
+// FONCTIONS COMPORTEMENTALES
+// ==========================================
 void waitForRelease(int pin) {
   delay(50); 
   while(digitalRead(pin) == HIGH) { delay(5); }
@@ -132,10 +179,20 @@ void playDyingSound() {
 }
 
 void resetPlayerPosition() {
-  playerX = 14; 
-  playerY = 10;
+  playerX = 15; 
+  playerY = 15;
+  if (selectedLevel == 3) {
+    enemyX = 145;
+    enemyY = 105;
+    currentWaypoint = 0;
+    enemyDirX = 0;
+    enemyDirY = 0;
+  }
 }
 
+// ==========================================
+// LOGIQUE D'AFFICHAGE DES MENUS
+// ==========================================
 void drawBackground() {
   for (int y = 0; y < 225; y++) {
     uint8_t r = map(y, 0, 225, (COLOR_BG_TOP >> 11) & 0x1F, (COLOR_BG_BOTTOM >> 11) & 0x1F);
@@ -165,11 +222,10 @@ void drawPillButton(String text, int x, int y, int w, int h, bool isSelected) {
   int textOffsetYY = (h - tft.fontHeight()) / 2 + 1;
 
   if (isSelected) {
-    // SÉLECTIONNÉ : Fond blanc et texte bleu
-    tft.fillRoundRect(x, y, w, h, r, COLOR_WHITE); 
-    tft.setTextColor(COLOR_BLUE_TEXT);
+    // Changement ici : Fond bleu et texte blanc quand sélectionné
+    tft.fillRoundRect(x, y, w, h, r, COLOR_MAZE_BLUE); 
+    tft.setTextColor(COLOR_WHITE);
   } else {
-    // PAR DÉFAUT : Fond clair d'origine et texte bleu
     tft.fillRoundRect(x, y, w, h, r, COLOR_BT_BG); 
     tft.setTextColor(COLOR_BLUE_TEXT);
   }
@@ -185,40 +241,98 @@ void drawCubeCharacter(int x, int y, bool isSelected, uint16_t cubeColor) {
   tft.fillRect(x, y, 50, 50, cubeColor); 
 }
 
-void drawLevelOneMaze() {
-  tft.fillScreen(COLOR_MAZE_BG);
+// ==========================================
+// DESSIN DU LABYRINTHE
+// ==========================================
+void drawLevelMaze() {
+  uint16_t currentBg = (selectedLevel == 1) ? COLOR_MAZE_BROWN : COLOR_MAZE_BLUE;
+  tft.fillScreen(currentBg);
+  
   tft.fillRect(0, 0, 320, 5, COLOR_PINK);       
   tft.fillRect(0, 235, 320, 5, COLOR_PINK);     
   tft.fillRect(0, 0, 5, 240, COLOR_PINK);       
   tft.fillRect(315, 0, 5, 240, COLOR_PINK);     
 
-  for (int i = 0; i < NUM_WALLS; i++) {
-    tft.fillRect(walls[i].x, walls[i].y, walls[i].w, walls[i].h, COLOR_WHITE);
+  if (selectedLevel == 1) {
+    for (int i = 0; i < NUM_WALLS_L1; i++) {
+      tft.fillRect(wallsLevel1[i].x, wallsLevel1[i].y, wallsLevel1[i].w, wallsLevel1[i].h, COLOR_WHITE);
+    }
+  } else { 
+    for (int i = 0; i < NUM_WALLS_L23; i++) {
+      tft.fillRect(wallsLevel2And3[i].x, wallsLevel2And3[i].y, wallsLevel2And3[i].w, wallsLevel2And3[i].h, COLOR_WHITE);
+    }
   }
 
-  tft.fillRect(5, 5, 25, 25, COLOR_START);
+  tft.fillRect(5, 5, 38, 35, COLOR_START);
   tft.setTextColor(COLOR_WHITE); tft.setTextSize(1);
-  tft.drawString("S", 14, 14);
+  tft.drawString("S", 20, 18);
 
-  tft.fillRect(285, 205, 25, 25, COLOR_PINK); 
-  tft.drawString("E", 294, 214);
+  tft.fillRect(273, 195, 42, 40, COLOR_PINK); 
+  tft.drawString("E", 290, 210);
 
   tft.setTextColor(COLOR_WHITE); tft.setTextSize(1);
   tft.drawString("LIVES: " + String(playerLives), 145, 11);
 
   uint16_t pColor = (selectedCharacter == 0) ? COLOR_CUBE_RED : COLOR_CUBE_ORANGE; 
   tft.fillRect(playerX, playerY, playerSize, playerSize, pColor);
+
+  if (selectedLevel == 3) {
+    tft.fillRect(enemyX, enemyY, enemySize, enemySize, COLOR_ENEMY_GREEN);
+  }
 }
 
-bool checkWallCollision(int nx, int ny) {
-  if (nx < 5 || (nx + playerSize) > 315 || ny < 5 || (ny + playerSize) > 235) return true;
-  for (int i = 0; i < NUM_WALLS; i++) {
-    if (nx < walls[i].x + walls[i].w && nx + playerSize > walls[i].x &&
-        ny < walls[i].y + walls[i].h && ny + playerSize > walls[i].y) {
-      return true; 
+bool checkWallCollision(int nx, int ny, int size) {
+  if (nx < 5 || (nx + size) > 315 || ny < 5 || (ny + size) > 235) return true;
+  
+  if (selectedLevel == 1) {
+    for (int i = 0; i < NUM_WALLS_L1; i++) {
+      if (nx < wallsLevel1[i].x + wallsLevel1[i].w && nx + size > wallsLevel1[i].x &&
+          ny < wallsLevel1[i].y + wallsLevel1[i].h && ny + size > wallsLevel1[i].y) {
+        return true; 
+      }
+    }
+  } else {
+    for (int i = 0; i < NUM_WALLS_L23; i++) {
+      if (nx < wallsLevel2And3[i].x + wallsLevel2And3[i].w && nx + size > wallsLevel2And3[i].x &&
+          ny < wallsLevel2And3[i].y + wallsLevel2And3[i].h && ny + size > wallsLevel2And3[i].y) {
+        return true; 
+      }
     }
   }
   return false;
+}
+
+// ==========================================
+// IA DE L'ENNEMI : LOGIQUE COMPORTEMENTALE ET PROTECTION
+// ==========================================
+void updateEnemyAI() {
+  const int speed = 1; 
+
+  int targetX = enemyWaypointsX[currentWaypoint];
+  int targetY = enemyWaypointsY[currentWaypoint];
+
+  // Détermination de l'axe directionnel
+  if (enemyX < targetX)       { enemyDirX = 1;  enemyDirY = 0; }
+  else if (enemyX > targetX)  { enemyDirX = -1; enemyDirY = 0; }
+  else if (enemyY < targetY)  { enemyDirX = 0;  enemyDirY = 1; }
+  else if (enemyY > targetY)  { enemyDirX = 0;  enemyDirY = -1; }
+  else {
+    enemyDirX = 0;  enemyDirY = 0;
+  }
+
+  int stepX = enemyX + (enemyDirX * speed);
+  int stepY = enemyY + (enemyDirY * speed);
+
+  // Application du déplacement si aucun mur blanc n'est intercepté
+  if (!checkWallCollision(stepX, stepY, enemySize)) {
+    enemyX = stepX;
+    enemyY = stepY;
+  }
+
+  // Changement de waypoint dès que la cible est atteinte ou qu'une collision bloque le passage
+  if ((enemyX == targetX && enemyY == targetY) || checkWallCollision(stepX, stepY, enemySize)) {
+    currentWaypoint = (currentWaypoint + 1) % NUM_WAYPOINTS;
+  }
 }
 
 void drawCurrentScene() {
@@ -297,7 +411,7 @@ void drawCurrentScene() {
       break;
 
     case THE_GAME:
-      drawLevelOneMaze();
+      drawLevelMaze();
       break;
 
     case GAME_OVER:
@@ -360,6 +474,7 @@ void executeSelection() {
   }
   else if (currentScene == VICTORY_SCREEN) {
     if (victorySelection == 0) {
+      if (selectedLevel < 3) selectedLevel++;
       playerLives = 3;
       resetPlayerPosition();
       currentScene = THE_GAME;
@@ -382,6 +497,7 @@ void executeSelection() {
 void setup() {
   tft.init();
   tft.setRotation(1); 
+  randomSeed(analogRead(0)); 
   
   pinMode(BTN_UP, INPUT_PULLDOWN);
   pinMode(BTN_DOWN, INPUT_PULLDOWN);
@@ -392,7 +508,9 @@ void setup() {
 }
 
 void loop() {
-
+  // ------------------------------------------
+  // LOGIQUE INTERNE DU JEU
+  // ------------------------------------------
   if (currentScene == THE_GAME) {
     int nextX = playerX;
     int nextY = playerY;
@@ -403,9 +521,11 @@ void loop() {
     if (digitalRead(BTN_LEFT) == HIGH)  { nextX--; moved = true; }  
     if (digitalRead(BTN_RIGHT) == HIGH) { nextX++; moved = true; }  
 
+    uint16_t currentBg = (selectedLevel == 1) ? COLOR_MAZE_BROWN : COLOR_MAZE_BLUE;
+
     if (moved) {
-      tft.fillRect(playerX, playerY, playerSize, playerSize, COLOR_MAZE_BG);
-      if (checkWallCollision(nextX, nextY)) {
+      tft.fillRect(playerX, playerY, playerSize, playerSize, currentBg);
+      if (checkWallCollision(nextX, nextY, playerSize)) {
         playerLives--;
         playDyingSound(); 
         if (playerLives <= 0) {
@@ -414,7 +534,7 @@ void loop() {
           drawCurrentScene();
         } else {
           resetPlayerPosition(); 
-          drawLevelOneMaze();    
+          drawLevelMaze();    
         }
       } else {
         playerX = nextX;
@@ -423,21 +543,46 @@ void loop() {
       uint16_t pColor = (selectedCharacter == 0) ? COLOR_CUBE_RED : COLOR_CUBE_ORANGE; 
       tft.fillRect(playerX, playerY, playerSize, playerSize, pColor);
       
-      if (playerX >= 280 && playerY >= 200) {
+      if (playerX >= 273 && playerY >= 195) {
         currentScene = VICTORY_SCREEN; 
         victorySelection = 0;
         drawCurrentScene();
       }
       delay(12); 
     }
+
+    // CALCUL ET AFFICHAGE ENNEMI
+    if (selectedLevel == 3 && millis() - lastEnemyMove > 10) {
+      lastEnemyMove = millis();
+      
+      tft.fillRect(enemyX, enemyY, enemySize, enemySize, currentBg);
+      updateEnemyAI();
+      tft.fillRect(enemyX, enemyY, enemySize, enemySize, COLOR_ENEMY_GREEN);
+      
+      // Hitbox Joueur / Ennemi
+      if (playerX < enemyX + enemySize && playerX + playerSize > enemyX &&
+          playerY < enemyY + enemySize && playerY + playerSize > enemyY) {
+        playerLives--;
+        playDyingSound();
+        if (playerLives <= 0) {
+          currentScene = GAME_OVER;
+          gameOverSelection = 0;
+          drawCurrentScene();
+        } else {
+          resetPlayerPosition();
+          drawLevelMaze();
+        }
+      }
+    }
   }
 
+  // ------------------------------------------
+  // LOGIQUE DES MENUS STATIQUES
+  // ------------------------------------------
   if (currentScene != THE_GAME) {
-    
     if (digitalRead(BTN_UP) == HIGH) {
-      if (checkLongPress(BTN_UP)) {
-        executeSelection();
-      } else {
+      if (checkLongPress(BTN_UP)) { executeSelection(); } 
+      else {
         if (currentScene == MAIN_MENU) selection = (selection - 1 + 3) % 3;
         else if (currentScene == LEVEL_SELECTION) selection = (selection - 1 + 4) % 4; 
         else if (currentScene == CONFIRMATION) selection = (selection - 1 + 2) % 2;
@@ -448,9 +593,8 @@ void loop() {
     }
 
     if (digitalRead(BTN_DOWN) == HIGH) {
-      if (checkLongPress(BTN_DOWN)) {
-        executeSelection();
-      } else {
+      if (checkLongPress(BTN_DOWN)) { executeSelection(); } 
+      else {
         if (currentScene == MAIN_MENU) selection = (selection + 1) % 3;
         else if (currentScene == LEVEL_SELECTION) selection = (selection + 1) % 4;
         else if (currentScene == CONFIRMATION) selection = (selection + 1) % 2;
@@ -461,38 +605,24 @@ void loop() {
     }
 
     if (digitalRead(BTN_LEFT) == HIGH) {
-      if (checkLongPress(BTN_LEFT)) {
-        executeSelection();
-      } else {
+      if (checkLongPress(BTN_LEFT)) { executeSelection(); } 
+      else {
         if (currentScene == CONFIRMATION) selection = 0; 
-        else if (currentScene == CHARACTER_SELECTION) { 
-          selectedCharacter = 0; 
-        } 
-        else if (currentScene == GAME_OVER) {
-          gameOverSelection = 0; 
-        }
-        else if (currentScene == VICTORY_SCREEN) {
-          victorySelection = 0; 
-        }
+        else if (currentScene == CHARACTER_SELECTION) { selectedCharacter = 0; } 
+        else if (currentScene == GAME_OVER) { gameOverSelection = 0; }
+        else if (currentScene == VICTORY_SCREEN) { victorySelection = 0; }
         drawCurrentScene();
         waitForRelease(BTN_LEFT);
       }
     }
 
     if (digitalRead(BTN_RIGHT) == HIGH) {
-      if (checkLongPress(BTN_RIGHT)) {
-        executeSelection();
-      } else {
+      if (checkLongPress(BTN_RIGHT)) { executeSelection(); } 
+      else {
         if (currentScene == CONFIRMATION) selection = 1; 
-        else if (currentScene == CHARACTER_SELECTION) { 
-          selectedCharacter = 1; 
-        } 
-        else if (currentScene == GAME_OVER) {
-          gameOverSelection = 1; 
-        }
-        else if (currentScene == VICTORY_SCREEN) {
-          victorySelection = 1; 
-        }
+        else if (currentScene == CHARACTER_SELECTION) { selectedCharacter = 1; } 
+        else if (currentScene == GAME_OVER) { gameOverSelection = 1; }
+        else if (currentScene == VICTORY_SCREEN) { victorySelection = 1; }
         drawCurrentScene();
         waitForRelease(BTN_RIGHT);
       }
