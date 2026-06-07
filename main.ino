@@ -51,8 +51,8 @@ int selectedCharacter = 0;
 // ==========================================
 // CONFIGURATION DU JOUEUR & ENNEMI
 // ==========================================
-int playerX = 15;          
-int playerY = 15;          
+int playerX = 16;          // Centré horizontalement dans les 35px
+int playerY = 18;          // Centré verticalement dans les 38px
 const int playerSize = 12; 
 int playerLives = 3;       
 
@@ -178,8 +178,8 @@ void playDyingSound() {
 }
 
 void resetPlayerPosition() {
-  playerX = 15; 
-  playerY = 15;
+  playerX = 16; 
+  playerY = 18;
   if (selectedLevel == 3) {
     enemyX = 145;
     enemyY = 105;
@@ -261,16 +261,19 @@ void drawLevelMaze() {
     }
   }
 
-  tft.fillRect(5, 5, 38, 35, COLOR_START);
+  // Zone de Départ "S" modifiée à 35x38
+  tft.fillRect(5, 5, 35, 38, COLOR_START);
   tft.setTextColor(COLOR_WHITE); tft.setTextSize(1);
-  tft.drawString("S", 20, 18);
+  tft.drawString("S", 19, 20);
 
+  // Zone d'Arrivée "E"
   tft.fillRect(273, 195, 42, 40, COLOR_PINK); 
   tft.drawString("E", 290, 210);
 
   tft.setTextColor(COLOR_WHITE); tft.setTextSize(1);
   tft.drawString("LIVES: " + String(playerLives), 145, 11);
 
+  // Le joueur est dessiné par-dessus la case verte
   uint16_t pColor = (selectedCharacter == 0) ? COLOR_CUBE_RED : COLOR_CUBE_ORANGE; 
   tft.fillRect(playerX, playerY, playerSize, playerSize, pColor);
 
@@ -361,16 +364,10 @@ void drawCurrentScene() {
 
     case OPTIONS:
       tft.setTextColor(COLOR_PINK); tft.drawString("OPTIONS", 25, 18); 
-      
-      // Ligne 1 : SOUND (Y = 60)
       drawOmniButton("SOUND", 25, 60, 100, 26, (selection == 0), 20);
       drawOmniButton("ON", 160, 60, 45, 24, soundOn, 15, 4);
       drawOmniButton("OFF", 215, 60, 45, 24, !soundOn, 6, 4);
-      
-      // Ligne 2 : CREDITS (Remonté doucement à Y = 100 pour resserrer l'espace)
       drawOmniButton("CREDITS", 25, 100, 110, 26, (selection == 1), 15);
-      
-      // Ligne 3 : RETURN (Reste en bas à Y = 190)
       drawOmniButton("RETURN", 185, 190, 100, 26, (selection == 2), 15);
       break;
 
@@ -485,11 +482,11 @@ void executeSelection() {
   }
   else if (currentScene == OPTIONS) {
     if (selection == 0) soundOn = !soundOn;
-    else if (selection == 1) { currentScene = CREDITS; selection = 0; } // Ajusté à index 1
-    else if (selection == 2) { currentScene = MAIN_MENU; selection = 1; } // Ajusté à index 2
+    else if (selection == 1) { currentScene = CREDITS; selection = 0; } 
+    else if (selection == 2) { currentScene = MAIN_MENU; selection = 1; } 
   } 
   else if (currentScene == CREDITS) {
-    if (selection == 0) { currentScene = OPTIONS; selection = 1; } // Revient sur CREDITS (index 1)
+    if (selection == 0) { currentScene = OPTIONS; selection = 1; } 
   }
   drawCurrentScene();
 }
@@ -524,7 +521,13 @@ void loop() {
     uint16_t currentBg = (selectedLevel == 1) ? COLOR_MAZE_BROWN : COLOR_MAZE_BLUE;
 
     if (moved) {
-      tft.fillRect(playerX, playerY, playerSize, playerSize, currentBg);
+      // Zone de sécurité adaptée aux dimensions 35x38 (de x=5 à x=40 et y=5 à y=43)
+      if (playerX >= 5 && playerX <= 40 && playerY >= 5 && playerY <= 43) {
+        tft.fillRect(playerX, playerY, playerSize, playerSize, COLOR_START);
+      } else {
+        tft.fillRect(playerX, playerY, playerSize, playerSize, currentBg);
+      }
+
       if (checkWallCollision(nextX, nextY, playerSize)) {
         playerLives--;
         playDyingSound(); 
@@ -584,7 +587,7 @@ void loop() {
         if (currentScene == MAIN_MENU) selection = (selection - 1 + 3) % 3;
         else if (currentScene == LEVEL_SELECTION) selection = (selection - 1 + 4) % 4; 
         else if (currentScene == CONFIRMATION) selection = (selection - 1 + 2) % 2;
-        else if (currentScene == OPTIONS) selection = (selection - 1 + 3) % 3; // Modifié pour 3 options
+        else if (currentScene == OPTIONS) selection = (selection - 1 + 3) % 3; 
         drawCurrentScene();
         waitForRelease(BTN_UP);
       }
@@ -596,7 +599,7 @@ void loop() {
         if (currentScene == MAIN_MENU) selection = (selection + 1) % 3;
         else if (currentScene == LEVEL_SELECTION) selection = (selection + 1) % 4;
         else if (currentScene == CONFIRMATION) selection = (selection + 1) % 2;
-        else if (currentScene == OPTIONS) selection = (selection + 1) % 3; // Modifié pour 3 options
+        else if (currentScene == OPTIONS) selection = (selection + 1) % 3; 
         drawCurrentScene();
         waitForRelease(BTN_DOWN);
       }
