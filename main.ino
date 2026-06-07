@@ -71,7 +71,6 @@ const int NUM_WAYPOINTS = sizeof(enemyWaypointsX) / sizeof(enemyWaypointsX[0]);
 int currentWaypoint = 0;
 
 bool soundOn = true;
-int brightness = 50; 
 
 struct Wall {
   int x, y, w, h;
@@ -222,7 +221,6 @@ void drawPillButton(String text, int x, int y, int w, int h, bool isSelected) {
   int textOffsetYY = (h - tft.fontHeight()) / 2 + 1;
 
   if (isSelected) {
-    // Changement ici : Fond bleu et texte blanc quand sélectionné
     tft.fillRoundRect(x, y, w, h, r, COLOR_MAZE_BLUE); 
     tft.setTextColor(COLOR_WHITE);
   } else {
@@ -311,7 +309,6 @@ void updateEnemyAI() {
   int targetX = enemyWaypointsX[currentWaypoint];
   int targetY = enemyWaypointsY[currentWaypoint];
 
-  // Détermination de l'axe directionnel
   if (enemyX < targetX)       { enemyDirX = 1;  enemyDirY = 0; }
   else if (enemyX > targetX)  { enemyDirX = -1; enemyDirY = 0; }
   else if (enemyY < targetY)  { enemyDirX = 0;  enemyDirY = 1; }
@@ -323,13 +320,11 @@ void updateEnemyAI() {
   int stepX = enemyX + (enemyDirX * speed);
   int stepY = enemyY + (enemyDirY * speed);
 
-  // Application du déplacement si aucun mur blanc n'est intercepté
   if (!checkWallCollision(stepX, stepY, enemySize)) {
     enemyX = stepX;
     enemyY = stepY;
   }
 
-  // Changement de waypoint dès que la cible est atteinte ou qu'une collision bloque le passage
   if ((enemyX == targetX && enemyY == targetY) || checkWallCollision(stepX, stepY, enemySize)) {
     currentWaypoint = (currentWaypoint + 1) % NUM_WAYPOINTS;
   }
@@ -366,12 +361,17 @@ void drawCurrentScene() {
 
     case OPTIONS:
       tft.setTextColor(COLOR_PINK); tft.drawString("OPTIONS", 25, 18); 
+      
+      // Ligne 1 : SOUND (Y = 60)
       drawOmniButton("SOUND", 25, 60, 100, 26, (selection == 0), 20);
       drawOmniButton("ON", 160, 60, 45, 24, soundOn, 15, 4);
       drawOmniButton("OFF", 215, 60, 45, 24, !soundOn, 6, 4);
-      drawOmniButton("BRIGHTNESS", 25, 100, 140, 26, (selection == 1), 10);
-      drawOmniButton("CREDITS", 25, 140, 110, 26, (selection == 2), 15);
-      drawOmniButton("RETURN", 185, 190, 100, 26, (selection == 3), 15);
+      
+      // Ligne 2 : CREDITS (Remonté doucement à Y = 100 pour resserrer l'espace)
+      drawOmniButton("CREDITS", 25, 100, 110, 26, (selection == 1), 15);
+      
+      // Ligne 3 : RETURN (Reste en bas à Y = 190)
+      drawOmniButton("RETURN", 185, 190, 100, 26, (selection == 2), 15);
       break;
 
     case CREDITS:
@@ -485,11 +485,11 @@ void executeSelection() {
   }
   else if (currentScene == OPTIONS) {
     if (selection == 0) soundOn = !soundOn;
-    else if (selection == 2) { currentScene = CREDITS; selection = 0; } 
-    else if (selection == 3) { currentScene = MAIN_MENU; selection = 1; } 
+    else if (selection == 1) { currentScene = CREDITS; selection = 0; } // Ajusté à index 1
+    else if (selection == 2) { currentScene = MAIN_MENU; selection = 1; } // Ajusté à index 2
   } 
   else if (currentScene == CREDITS) {
-    if (selection == 0) { currentScene = OPTIONS; selection = 2; } 
+    if (selection == 0) { currentScene = OPTIONS; selection = 1; } // Revient sur CREDITS (index 1)
   }
   drawCurrentScene();
 }
@@ -551,7 +551,6 @@ void loop() {
       delay(12); 
     }
 
-    // CALCUL ET AFFICHAGE ENNEMI
     if (selectedLevel == 3 && millis() - lastEnemyMove > 10) {
       lastEnemyMove = millis();
       
@@ -559,7 +558,6 @@ void loop() {
       updateEnemyAI();
       tft.fillRect(enemyX, enemyY, enemySize, enemySize, COLOR_ENEMY_GREEN);
       
-      // Hitbox Joueur / Ennemi
       if (playerX < enemyX + enemySize && playerX + playerSize > enemyX &&
           playerY < enemyY + enemySize && playerY + playerSize > enemyY) {
         playerLives--;
@@ -586,7 +584,7 @@ void loop() {
         if (currentScene == MAIN_MENU) selection = (selection - 1 + 3) % 3;
         else if (currentScene == LEVEL_SELECTION) selection = (selection - 1 + 4) % 4; 
         else if (currentScene == CONFIRMATION) selection = (selection - 1 + 2) % 2;
-        else if (currentScene == OPTIONS) selection = (selection - 1 + 4) % 4; 
+        else if (currentScene == OPTIONS) selection = (selection - 1 + 3) % 3; // Modifié pour 3 options
         drawCurrentScene();
         waitForRelease(BTN_UP);
       }
@@ -598,7 +596,7 @@ void loop() {
         if (currentScene == MAIN_MENU) selection = (selection + 1) % 3;
         else if (currentScene == LEVEL_SELECTION) selection = (selection + 1) % 4;
         else if (currentScene == CONFIRMATION) selection = (selection + 1) % 2;
-        else if (currentScene == OPTIONS) selection = (selection + 1) % 4;
+        else if (currentScene == OPTIONS) selection = (selection + 1) % 3; // Modifié pour 3 options
         drawCurrentScene();
         waitForRelease(BTN_DOWN);
       }
