@@ -143,10 +143,12 @@ void drawLevelMaze();
 bool checkWallCollision(int nx, int ny, int size);
 void resetPlayerPosition();
 void playDyingSound();
+void playGameOverSound();
+void playVictorySound();
 void updateEnemyAI();
 
 // ==========================================
-// FONCTIONS COMPORTEMENTALES
+// FONCTIONS COMPORTEMENTALES & RETRO AUDIO
 // ==========================================
 void waitForRelease(int pin) {
   delay(50); 
@@ -173,6 +175,30 @@ void playDyingSound() {
   tone(BUZZER_PIN, 280, 120); delay(130);
   tone(BUZZER_PIN, 180, 120); delay(130);
   tone(BUZZER_PIN, 100, 250); delay(250);
+  noTone(BUZZER_PIN);
+  pinMode(BUZZER_PIN, INPUT);
+}
+
+void playGameOverSound() {
+  if (!soundOn) return;
+  pinMode(BUZZER_PIN, OUTPUT);
+  tone(BUZZER_PIN, 392, 200); delay(220); // G4
+  tone(BUZZER_PIN, 349, 200); delay(220); // F4
+  tone(BUZZER_PIN, 311, 200); delay(220); // Eb4
+  tone(BUZZER_PIN, 247, 400); delay(420); // B3
+  noTone(BUZZER_PIN);
+  pinMode(BUZZER_PIN, INPUT);
+}
+
+void playVictorySound() {
+  if (!soundOn) return;
+  pinMode(BUZZER_PIN, OUTPUT);
+  tone(BUZZER_PIN, 330, 100); delay(120); // E4
+  tone(BUZZER_PIN, 392, 100); delay(120); // G4
+  tone(BUZZER_PIN, 659, 100); delay(120); // E5
+  tone(BUZZER_PIN, 523, 120); delay(140); // C5
+  tone(BUZZER_PIN, 587, 120); delay(140); // D5
+  tone(BUZZER_PIN, 784, 300); delay(320); // G5
   noTone(BUZZER_PIN);
   pinMode(BUZZER_PIN, INPUT);
 }
@@ -220,9 +246,10 @@ void drawPillButton(String text, int x, int y, int w, int h, bool isSelected) {
   int textOffsetXX = (w - textWidth) / 2;
   int textOffsetYY = (h - tft.fontHeight()) / 2 + 1;
 
+  // CORRIGÉ : Blanc si sélectionné, rose pour l'arrière-plan par défaut
   if (isSelected) {
-    tft.fillRoundRect(x, y, w, h, r, COLOR_MAZE_BLUE); 
-    tft.setTextColor(COLOR_WHITE);
+    tft.fillRoundRect(x, y, w, h, r, COLOR_WHITE); 
+    tft.setTextColor(COLOR_PINK);
   } else {
     tft.fillRoundRect(x, y, w, h, r, COLOR_BT_BG); 
     tft.setTextColor(COLOR_BLUE_TEXT);
@@ -304,7 +331,7 @@ bool checkWallCollision(int nx, int ny, int size) {
 }
 
 // ==========================================
-// IA DE L'ENNEMI : LOGIQUE COMPORTEMENTALE ET PROTECTION
+// IA DE L'ENNEMI : LOGIQUE COMPORTEMENTALE
 // ==========================================
 void updateEnemyAI() {
   const int speed = 1; 
@@ -521,7 +548,6 @@ void loop() {
     uint16_t currentBg = (selectedLevel == 1) ? COLOR_MAZE_BROWN : COLOR_MAZE_BLUE;
 
     if (moved) {
-      // Zone de sécurité adaptée aux dimensions 35x38 (de x=5 à x=40 et y=5 à y=43)
       if (playerX >= 5 && playerX <= 40 && playerY >= 5 && playerY <= 43) {
         tft.fillRect(playerX, playerY, playerSize, playerSize, COLOR_START);
       } else {
@@ -535,6 +561,7 @@ void loop() {
           currentScene = GAME_OVER; 
           gameOverSelection = 0; 
           drawCurrentScene();
+          playGameOverSound(); // Joue la musique Game Over rétro une seule fois
         } else {
           resetPlayerPosition(); 
           drawLevelMaze();    
@@ -550,6 +577,7 @@ void loop() {
         currentScene = VICTORY_SCREEN; 
         victorySelection = 0;
         drawCurrentScene();
+        playVictorySound(); // Joue la mélodie de victoire rétro une seule fois
       }
       delay(12); 
     }
@@ -569,6 +597,7 @@ void loop() {
           currentScene = GAME_OVER;
           gameOverSelection = 0;
           drawCurrentScene();
+          playGameOverSound(); // Joue la musique Game Over rétro une seule fois
         } else {
           resetPlayerPosition();
           drawLevelMaze();
