@@ -221,6 +221,7 @@ void drawPillButton(String text, int x, int y, int w, int h, bool isSelected)
   int textWidth = tft.textWidth(text);
   int textOffsetXX = (w - textWidth) / 2;            // Automatically centers text horizontally
   int textOffsetYY = (h - tft.fontHeight()) / 2 + 1; // Automatically centers text vertically
+//w is for width , to center it we calculate the left over blank space
 
   if (isSelected)
   {
@@ -308,7 +309,7 @@ void drawLevelMaze()
 bool checkWallCollision(int nx, int ny, int size)
 {
   // Check if player position is outside the outer map boundaries
-  if (nx < 5 || (nx + size) > 315 || ny < 5 || (ny + size) > 235)
+  if (nx < 5 || (nx + size) > 315 || ny < 5 || (ny + size) > 235) //new x possition - new y position
     return true;
 
   // Check overlap collision states against active Level 1 wall obstacle structural indices
@@ -316,8 +317,10 @@ bool checkWallCollision(int nx, int ny, int size)
   {
     for (int i = 0; i < NUM_WALLS_L1; i++)
     {
-      if (nx < wallsLevel1[i].x + wallsLevel1[i].w && nx + size > wallsLevel1[i].x &&
-          ny < wallsLevel1[i].y + wallsLevel1[i].h && ny + size > wallsLevel1[i].y)
+      if (nx < wallsLevel1[i].x + wallsLevel1[i].w //The left edge of the player is to the left of the wall’s right edge.
+         && nx + size > wallsLevel1[i].x && //The left edge of the player is to the left of the wall’s right edge.
+          ny < wallsLevel1[i].y + wallsLevel1[i].h && //The top edge of the player is higher than the wall’s bottom edge.
+           ny + size > wallsLevel1[i].y) //The bottom edge of the player is lower than the wall’s top edge.
       {
         return true; // Overlap detected
       }
@@ -351,27 +354,27 @@ void updateEnemyAI()
   // Set direction vector variables to step towards the targeted waypoint coordinates
   if (enemyX < targetX)
   {
-    enemyDirX = 1;
-    enemyDirY = 0;
+    enemyDirX = 1; //move right
+    enemyDirY = 0; //don't move
   }
   else if (enemyX > targetX)
   {
-    enemyDirX = -1;
+    enemyDirX = -1; //move left
     enemyDirY = 0;
   }
   else if (enemyY < targetY)
   {
     enemyDirX = 0;
-    enemyDirY = 1;
+    enemyDirY = 1; //move down
   }
   else if (enemyY > targetY)
   {
     enemyDirX = 0;
-    enemyDirY = -1;
+    enemyDirY = -1; //move up
   }
   else
   {
-    enemyDirX = 0;
+    enemyDirX = 0; //If it is standing perfectly on top of the target, set both to 0 (stop moving).
     enemyDirY = 0;
   }
 
