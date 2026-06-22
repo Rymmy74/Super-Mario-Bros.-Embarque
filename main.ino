@@ -773,8 +773,6 @@ void loop()
         }
       }
     }
-  }
-
 
   if (currentScene != THE_GAME)
   {
@@ -801,7 +799,6 @@ void loop()
         waitForRelease(BTN_UP); // Stabilize debounce runtime constraints
       }
     }
-
     // Process input handlers targeting Down Arrow controls
     if (digitalRead(BTN_DOWN) == HIGH)
     {
