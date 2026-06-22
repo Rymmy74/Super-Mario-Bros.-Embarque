@@ -99,9 +99,6 @@ Wall wallsLevel2And3[] = {
     {32, 35, 3, 25}, {32, 35, 32, 3}, {64, 35, 3, 85}, {5, 85, 59, 3}, {36, 120, 3, 85}, {36, 165, 59, 3}, {68, 200, 3, 35}, {95, 35, 3, 140}, {135, 5, 3, 35}, {135, 65, 3, 115}, {135, 35, 45, 3}, {180, 35, 3, 30}, {95, 65, 40, 3}, {135, 90, 85, 3}, {220, 38, 3, 52}, {220, 38, 72, 3}, {185, 120, 80, 3}, {185, 120, 3, 40}, {233, 120, 3, 45}, {233, 162, 62, 3}, {295, 110, 3, 55}, {265, 78, 50, 3}, {68, 190, 222, 3}};
 const int NUM_WALLS_L23 = sizeof(wallsLevel2And3) / sizeof(wallsLevel2And3[0]);
 
-// ==========================================
-// FUNCTION PROTOTYPES
-// ==========================================
 // Declaring function blueprints ahead of time so the compiler knows they exist
 void drawCurrentScene();
 void executeSelection();
@@ -177,10 +174,6 @@ void resetPlayerPosition()
     enemyDirY = 0;
   }
 }
-
-// ==========================================
-// RENDER UI & INTERFACES
-// ==========================================
 
 // Renders a smooth background color gradient from top to bottom
 void drawBackground()
@@ -312,7 +305,6 @@ bool checkWallCollision(int nx, int ny, int size)
   if (nx < 5 || (nx + size) > 315 || ny < 5 || (ny + size) > 235) //new x possition - new y position
     return true;
 
-  // Check overlap collision states against active Level 1 wall obstacle structural indices
   if (selectedLevel == 1)
   {
     for (int i = 0; i < NUM_WALLS_L1; i++)
@@ -671,7 +663,7 @@ void setup()
 void loop()
 {
   // ------------------------------------------
-  // IN-GAME REAL-TIME LOGIC LOOP
+  // IN-GAME LOGIC LOOP
   // ------------------------------------------
   if (currentScene == THE_GAME)
   {
@@ -783,9 +775,7 @@ void loop()
     }
   }
 
-  // ------------------------------------------
-  // STATIC NON-GAME UI NAVIGATION CONTROL LOGIC
-  // ------------------------------------------
+
   if (currentScene != THE_GAME)
   {
 
